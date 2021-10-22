@@ -7,12 +7,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 import study.datajpa.dto.MemberDto;
 import study.datajpa.entity.Member;
+import study.datajpa.entity.Team;
 import study.datajpa.jpaRepo.MemberRepository;
+import study.datajpa.jpaRepo.TeamRepository;
 
+import javax.persistence.EntityManager;
+import javax.swing.text.html.parser.Entity;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -24,6 +29,12 @@ public class MemberRepositoryTest {
 
     @Autowired
     MemberRepository memberRepository;
+
+    @Autowired
+    TeamRepository teamRepository;
+
+    @Autowired
+    EntityManager em;
 
     @Test
     public void testMember() {
@@ -103,6 +114,80 @@ public class MemberRepositoryTest {
         assertThat(page.hasNext()).isTrue();// 다음 페이지가 있는가?*/
     }
 
+    @Test
+    public void bulkUpdate() throws Exception {
+        /*@Modifying(clearAutomatically = true) (이 옵션의 기본값은 false )
+        이 옵션 없이 회원을 findById로 다시 조회하면 영속성 컨텍스트에 과거 값이 남아서 문제가 될 수 있다. 만약 다시 조회해야 하면 꼭 영속성 컨텍스트를 초기화 하자.*/
 
+        //given
+        memberRepository.save(new Member("member1", 10));
+        memberRepository.save(new Member("member2", 19));
+        memberRepository.save(new Member("member3", 20));
+        memberRepository.save(new Member("member4", 21));
+        memberRepository.save(new Member("member5", 40));
+        //when
+        int resultCount = memberRepository.bulkAgePlus(20);
+        //then
+        assertThat(resultCount).isEqualTo(3);
+    }
+
+    @Test
+    public void findMemberLazy() throws Exception {
+        //given
+        //member1 -> teamA
+        //member2 -> teamB
+        Team teamA = new Team("teamA");
+        Team teamB = new Team("teamB"); teamRepository.save(teamA);
+        teamRepository.save(teamB);
+        memberRepository.save(new Member("member1", 10, teamA));
+        memberRepository.save(new Member("member2", 20, teamB));
+
+        em.flush();
+        em.clear();
+
+        //when
+        List<Member> members = memberRepository.findAll();
+
+        //then
+        for (Member member : members) {
+            member.getTeam().getName();
+        }
+    }
+
+    @Test
+    public void fetchJoin() {
+
+//        memberRepository.findMemberFetchJoin();
+
+        memberRepository.findAll();
+
+    }
+
+    @Test
+    public void queryHint() throws Exception {
+        //given
+        memberRepository.save(new Member("member1", 10)); em.flush();
+        em.flush();
+        em.clear();
+
+        //when
+        Member member = memberRepository.findReadOnlyByUsername("member1");
+        member.setUsername("member2");
+        em.flush(); //Update Query 실행X
+
+    }
+
+    /*사용자 정 리포지토리 구현
+    * 사용자 정의 구현 클래스
+        규칙: 리포지토리 인터페이스 이름 + Impl
+        스프링 데이터 JPA가 인식해서 스프링 빈으로 등록
+    *
+    * */
+    @Test
+    public void customEntity() {
+
+        List<Member> result = memberRepository.findMemberCustom();
+
+    }
 
 }

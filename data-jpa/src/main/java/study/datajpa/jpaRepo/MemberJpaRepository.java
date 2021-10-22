@@ -4,6 +4,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import study.datajpa.entity.Member;
 
@@ -75,6 +77,11 @@ public class MemberJpaRepository {
                 .getSingleResult();
     }
 
-
+    public int bulkAgePlus(int age) {
+        int resultCount = em.createQuery(
+                    "update Member m set m.age = m.age + 1" + "where m.age >= :age")
+            .setParameter("age", age)
+            .executeUpdate(); return resultCount;
+    }
 
 }
